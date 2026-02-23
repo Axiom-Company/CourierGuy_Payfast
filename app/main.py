@@ -1,0 +1,56 @@
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
+from app.config import get_settings
+from app.api.router import api_router
+from app.utils.exceptions import AppException, NotFoundError, AuthenticationError, AuthorizationError
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Pokemon Card Store API starting...")
+    yield
+    print("Shutting down...")
+
+
+def create_app() -> FastAPI:
+    settings = get_settings()
+    app = FastAPI(
+        title="Pokemon Card Store API",
+        description="South African Pokemon card reselling platform",
+        version="1.0.0",
+        lifespan=lifespan,
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.frontend_url, "http://localhost:5173", "http://localhost:3000"],
+        allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+    )
+    app.include_router(api_router, prefix="/api/v1")
+
+    # Exception handlers for custom exceptions
+    @app.exception_handler(NotFoundError)
+    async def not_found_handler(request: Request, exc: NotFoundError):
+        return JSONResponse(status_code=404, content={"detail": exc.message, "code": exc.code})
+
+    @app.exception_handler(AuthenticationError)
+    async def auth_error_handler(request: Request, exc: AuthenticationError):
+        return JSONResponse(status_code=401, content={"detail": exc.message, "code": exc.code})
+
+    @app.exception_handler(AuthorizationError)
+    async def authz_error_handler(request: Request, exc: AuthorizationError):
+        return JSONResponse(status_code=403, content={"detail": exc.message, "code": exc.code})
+
+    @app.exception_handler(AppException)
+    async def app_exception_handler(request: Request, exc: AppException):
+        return JSONResponse(status_code=400, content={"detail": exc.message, "code": exc.code})
+
+    @app.get("/health")
+    async def health():
+        return {"status": "ok", "service": "pokemon-card-store-api"}
+
+    return app
+
+
+app = create_app()
