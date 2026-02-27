@@ -5,8 +5,11 @@ from app.domain.models.order import Order, OrderItem
 from app.domain.models.user import User
 from app.domain.enums import OrderStatus, PaymentStatus
 from app.domain.schemas.checkout import CheckoutRequest
+from app.domain.schemas.direct_checkout import DirectCheckoutRequest
 from app.utils.pagination import paginate
 from app.domain.schemas.order import OrderResponse
+
+PAGE_SIZE = 20
 
 
 class OrderService:
@@ -14,6 +17,51 @@ class OrderService:
         self.order_repo = order_repo
         self.cart_repo = cart_repo
         self.product_repo = product_repo
+
+    async def create_direct(self, data: DirectCheckoutRequest) -> Order:
+        """Create an order directly from provided items — no auth or cart DB required.
+        Used by the Elite TCG frontend integration."""
+        order_items = []
+        subtotal = 0.0
+
+        for item in data.items:
+            line_total = item.unit_price_zar * item.quantity
+            subtotal += line_total
+            order_items.append(OrderItem(
+                product_id=item.product_id,
+                product_name=item.name,
+                product_type="sealed",
+                condition=None,
+                quantity=item.quantity,
+                unit_price_zar=item.unit_price_zar,
+                line_total_zar=round(line_total, 2),
+                photo_url=item.image_url,
+                tcg_image_small=None,
+            ))
+
+        order_number = await self.order_repo.get_next_order_number()
+        total = round(subtotal + data.shipping.cost_zar, 2)
+
+        order = Order(
+            order_number=order_number,
+            customer_id=None,
+            guest_email=data.customer.email,
+            guest_name=data.customer.full_name,
+            guest_phone=data.customer.phone,
+            shipping_method=data.shipping.method,
+            shipping_cost_zar=data.shipping.cost_zar,
+            shipping_address_line1=data.shipping.address_line1,
+            shipping_address_line2=data.shipping.address_line2,
+            shipping_city=data.shipping.city,
+            shipping_province=data.shipping.province,
+            shipping_postal_code=data.shipping.postal_code,
+            subtotal_zar=round(subtotal, 2),
+            total_zar=total,
+            order_status=OrderStatus.PENDING_PAYMENT,
+            payment_status=PaymentStatus.PENDING,
+            items=order_items,
+        )
+        return await self.order_repo.create(order)
 
     async def create_from_cart(self, user: User | None, data: CheckoutRequest) -> Order:
         """Convert cart to order. Validates stock, snapshots data, clears cart."""
@@ -113,3 +161,15 @@ class OrderService:
             "courier_tracking_number": tracking_number,
             "order_status": OrderStatus.SHIPPED,
         })
+
+    # ── Admin (API-key auth from Elite TCG admin panel) ──
+
+    async def get_all_orders_admin(self, status=None, page: int = 1):
+        query = await self.order_repo.get_all_orders(status)
+        return await paginate(self.order_repo.db, query, page, PAGE_SIZE, OrderResponse)
+
+    async def get_by_id(self, order_id: str) -> Order | None:
+        return await self.order_repo.get_by_id_with_items(order_id)
+
+    async def update_notes(self, order_id: str, notes: str) -> Order | None:
+        return await self.order_repo.update_by_id(order_id, {"seller_notes": notes})

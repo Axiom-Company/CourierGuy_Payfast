@@ -3,8 +3,13 @@ from app.config import get_settings
 
 settings = get_settings()
 
+# Ensure the URL uses the asyncpg driver
+_db_url = settings.database_url
+if _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 engine = create_async_engine(
-    settings.database_url,
+    _db_url,
     echo=(settings.app_env == "development"),
     pool_size=5,
     max_overflow=10,

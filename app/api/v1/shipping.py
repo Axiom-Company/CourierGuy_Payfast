@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from app.domain.schemas.shipping import ShippingQuoteRequest, ShippingQuoteResponse, ShipmentBookRequest, ShipmentBookResponse
 from app.services.shipping_service import ShippingService
-from app.api.deps import get_shipping_service, require_seller
+from app.api.deps import get_shipping_service, require_seller, require_admin_api_key
 
 router = APIRouter(prefix="/shipping", tags=["Shipping"])
 
@@ -20,6 +20,16 @@ async def quote(data: ShippingQuoteRequest, service: ShippingService = Depends(g
 async def book(data: ShipmentBookRequest, user=Depends(require_seller),
                service: ShippingService = Depends(get_shipping_service)):
     """Book Courier Guy collection. Can also be auto-triggered after payment."""
+    try:
+        return await service.book_shipment(data.order_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.post("/admin/book", response_model=ShipmentBookResponse)
+async def admin_book(data: ShipmentBookRequest, _=Depends(require_admin_api_key),
+                     service: ShippingService = Depends(get_shipping_service)):
+    """Book Courier Guy collection from admin panel (API-key auth)."""
     try:
         return await service.book_shipment(data.order_id)
     except ValueError as e:

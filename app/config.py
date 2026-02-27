@@ -7,13 +7,10 @@ class Settings(BaseSettings):
     database_url: str
     database_url_sync: str = ""
 
-    # Auth
+    # Auth (kept for seller order management)
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 1440
-
-    # Pokemon TCG
-    pokemon_tcg_api_key: str = ""
 
     # PayFast
     payfast_merchant_id: str
@@ -29,17 +26,10 @@ class Settings(BaseSettings):
     courier_guy_account_number: str = ""
     courier_guy_webhook_secret: str = ""
 
-    # Cloudinary
-    cloudinary_cloud_name: str
-    cloudinary_api_key: str
-    cloudinary_api_secret: str
-
-    # Exchange Rate
-    usd_to_zar_default: float = 18.50
-
     # App
     frontend_url: str = "http://localhost:5173"
     app_env: str = "development"
+    admin_api_key: str = ""
 
     # Seller address (Courier Guy pickup)
     seller_address_line1: str = ""
@@ -49,7 +39,7 @@ class Settings(BaseSettings):
     seller_phone: str = ""
     seller_email: str = ""
 
-    # SMTP
+    # SMTP (for order confirmation emails)
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
@@ -58,6 +48,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
 
 @lru_cache()

@@ -1,15 +1,3 @@
-from app.domain.enums import CardCondition
-
-# Multiplier applied to market price based on card condition
-CONDITION_MULTIPLIERS: dict[CardCondition, float] = {
-    CardCondition.MINT: 1.00,
-    CardCondition.NEAR_MINT: 0.95,
-    CardCondition.LIGHTLY_PLAYED: 0.85,
-    CardCondition.MODERATELY_PLAYED: 0.70,
-    CardCondition.HEAVILY_PLAYED: 0.50,
-    CardCondition.DAMAGED: 0.30,
-}
-
 # Shipping
 SHIPPING_HANDLING_FEE_ZAR = 25.00   # Added on top of courier quote
 MIN_PARCEL_WEIGHT_KG = 0.5          # Courier Guy minimum

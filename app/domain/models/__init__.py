@@ -3,6 +3,5 @@ from app.domain.models.user import User
 from app.domain.models.product import Product
 from app.domain.models.order import Order, OrderItem
 from app.domain.models.cart import CartItem
-from app.domain.models.exchange_rate import ExchangeRate
 
-__all__ = ["Base", "User", "Product", "Order", "OrderItem", "CartItem", "ExchangeRate"]
+__all__ = ["Base", "User", "Product", "Order", "OrderItem", "CartItem"]

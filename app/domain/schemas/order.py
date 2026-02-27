@@ -57,3 +57,17 @@ class OrderListResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── Admin request bodies ──
+
+class AdminStatusUpdate(BaseModel):
+    status: OrderStatus
+
+
+class AdminTrackingUpdate(BaseModel):
+    tracking_number: str
+
+
+class AdminNotesUpdate(BaseModel):
+    notes: str

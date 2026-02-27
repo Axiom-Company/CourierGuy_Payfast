@@ -17,14 +17,15 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
-        title="Pokemon Card Store API",
-        description="South African Pokemon card reselling platform",
+        title="Elite TCG Payments & Shipping API",
+        description="PayFast payment processing and Courier Guy shipping microservice for Elite TCG",
         version="1.0.0",
         lifespan=lifespan,
     )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.frontend_url, "http://localhost:5173", "http://localhost:3000"],
+        allow_origins=[settings.frontend_url],
+        allow_origin_regex=r"http://localhost:\d+",
         allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
     )
     app.include_router(api_router, prefix="/api/v1")
