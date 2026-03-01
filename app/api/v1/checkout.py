@@ -26,11 +26,24 @@ async def direct_checkout(data: DirectCheckoutRequest,
                           order_service: OrderService = Depends(get_order_service),
                           payment_service: PaymentService = Depends(get_payment_service)):
     """Direct checkout from external frontend — no auth or cart required.
-    Accepts items, customer info, and shipping details directly."""
+    Accepts items, customer info, and shipping details directly.
+    Supports payment_provider='payfast' (default) or 'payflex'."""
     try:
         order = await order_service.create_direct(data)
+
+        if data.payment_provider == "payflex":
+            # For Payflex: create the order in our DB first, then the frontend
+            # will call /api/v1/payments/payflex/create-order with the order number.
+            # We just return the order data and a flag so the frontend knows
+            # to redirect to the Payflex create-order endpoint instead of PayFast.
+            return {
+                "order": order,
+                "payment_provider": "payflex",
+                "order_number": order.order_number,
+            }
+
         checkout = payment_service.generate_checkout(order)
-        return {"order": order, **checkout}
+        return {"order": order, "payment_provider": "payfast", **checkout}
     except ValueError as e:
         raise HTTPException(400, str(e))
 

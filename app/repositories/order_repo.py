@@ -41,6 +41,34 @@ class OrderRepository(BaseRepository[Order]):
             query = query.where(Order.order_status == status)
         return query.order_by(Order.created_at.desc())
 
+    async def get_by_payflex_token(self, token: str) -> Order | None:
+        result = await self.db.execute(
+            select(Order).options(selectinload(Order.items)).where(Order.payflex_token == token)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_payflex_order_id(self, payflex_order_id: str) -> Order | None:
+        result = await self.db.execute(
+            select(Order).options(selectinload(Order.items)).where(Order.payflex_order_id == payflex_order_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_pending_payflex_orders(self, older_than_minutes: int = 15):
+        """Find Payflex orders stuck in pending for longer than the threshold."""
+        from datetime import datetime, timedelta, timezone
+        from app.domain.enums import PaymentStatus
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=older_than_minutes)
+        result = await self.db.execute(
+            select(Order)
+            .where(
+                Order.payment_provider == "payflex",
+                Order.payment_status == PaymentStatus.PENDING,
+                Order.created_at < cutoff,
+            )
+            .order_by(Order.created_at.asc())
+        )
+        return list(result.scalars().all())
+
     async def get_next_order_number(self) -> str:
         count = await self.db.scalar(select(func.count()).select_from(Order)) or 0
         return f"PKM-{(count + 1):05d}"

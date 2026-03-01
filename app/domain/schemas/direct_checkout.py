@@ -30,3 +30,4 @@ class DirectCheckoutRequest(BaseModel):
     items: list[DirectCheckoutItem] = Field(..., min_length=1)
     customer: DirectCheckoutCustomer
     shipping: DirectCheckoutShipping
+    payment_provider: str = "payfast"  # "payfast" | "payflex"

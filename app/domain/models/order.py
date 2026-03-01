@@ -45,6 +45,12 @@ class Order(UUIDMixin, TimestampMixin, Base):
     )
     payfast_payment_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
+    # Payflex
+    payment_provider: Mapped[str | None] = mapped_column(String(20), nullable=True)  # 'payfast' | 'payflex'
+    payflex_order_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    payflex_token: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    payflex_payment_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     # Notes
     seller_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 

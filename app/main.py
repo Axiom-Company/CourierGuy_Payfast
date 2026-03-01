@@ -9,7 +9,16 @@ from app.utils.exceptions import AppException, NotFoundError, AuthenticationErro
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Pokemon Card Store API starting...")
+    print("Elite TCG API starting...")
+
+    # Validate Payflex config on startup (warn if missing, don't crash)
+    from app.payments.payflex.config import get_payflex_settings
+    pf = get_payflex_settings()
+    if pf.is_configured:
+        print(f"Payflex: enabled (mode={pf.payflex_mode})")
+    else:
+        print("Payflex: DISABLED (missing credentials)")
+
     yield
     print("Shutting down...")
 
