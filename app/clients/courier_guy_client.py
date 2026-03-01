@@ -32,7 +32,7 @@ class CourierGuyClient:
             "city": settings.seller_city,
             "province": settings.seller_province,
             "postal_code": settings.seller_postal_code,
-            "contact_name": "Pokemon Cards SA",
+            "contact_name": settings.seller_company_name,
             "contact_phone": settings.seller_phone,
             "type": "business",
         }

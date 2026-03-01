@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     payfast_cancel_url: str
     payfast_notify_url: str
 
+    # PayFast marketplace URLs
+    payfast_marketplace_return_url: str = "https://www.elitetcg.co.za/marketplace/payment/success"
+    payfast_marketplace_cancel_url: str = "https://www.elitetcg.co.za/marketplace/payment/cancel"
+    payfast_marketplace_notify_url: str = "https://cgpf.elitetcg.co.za/api/v1/marketplace/payfast/notify"
+    payfast_promo_notify_url: str = "https://cgpf.elitetcg.co.za/api/v1/promotions/notify"
+
     # Courier Guy
     courier_guy_api_key: str
     courier_guy_account_number: str = ""
@@ -27,6 +33,7 @@ class Settings(BaseSettings):
     admin_api_key: str = ""
 
     # Seller address (Courier Guy pickup)
+    seller_company_name: str = "Elite TCG"
     seller_address_line1: str = ""
     seller_city: str = "Vanderbijlpark"
     seller_province: str = "Gauteng"
@@ -34,11 +41,25 @@ class Settings(BaseSettings):
     seller_phone: str = ""
     seller_email: str = ""
 
-    # SMTP (for order confirmation emails)
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
+    # ZeptoMail (transactional emails)
+    zeptomail_api_key: str = ""
+    zeptomail_from_email: str = "admin@elitetcg.co.za"
+    zeptomail_from_name: str = "Elite TCG"
+
+    # Pokemon TCG API
+    pokemon_tcg_api_key: str = ""
+
+    # Exchange rate fallback
+    usd_to_zar: float = 17.80
+
+    # Supabase Auth
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+    supabase_jwt_secret: str = ""
+
+    # Google Cloud Vision (card scanning)
+    google_cloud_vision_api_key: str = ""
 
     class Config:
         env_file = ".env"

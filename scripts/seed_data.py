@@ -10,8 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import AsyncSessionLocal
 from app.domain.models.product import Product
-from app.domain.models.user import User
-from app.domain.enums import ProductType, SealedCategory, CardCondition, UserRole
+from app.domain.models.user import Customer
+from app.domain.enums import ProductType, SealedCategory, CardCondition
 from sqlalchemy import select
 
 
@@ -113,7 +113,7 @@ async def seed():
     async with AsyncSessionLocal() as session:
         # Find a seller to assign products to
         result = await session.execute(
-            select(User).where(User.role == UserRole.SELLER).limit(1)
+            select(Customer).where(Customer.is_seller == True).limit(1)
         )
         seller = result.scalar_one_or_none()
         if not seller:

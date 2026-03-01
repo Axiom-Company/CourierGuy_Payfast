@@ -2,7 +2,7 @@ from app.repositories.order_repo import OrderRepository
 from app.repositories.cart_repo import CartRepository
 from app.repositories.product_repo import ProductRepository
 from app.domain.models.order import Order, OrderItem
-from app.domain.models.user import User
+from app.domain.models.user import Customer
 from app.domain.enums import OrderStatus, PaymentStatus
 from app.domain.schemas.checkout import CheckoutRequest
 from app.domain.schemas.direct_checkout import DirectCheckoutRequest
@@ -63,7 +63,7 @@ class OrderService:
         )
         return await self.order_repo.create(order)
 
-    async def create_from_cart(self, user: User | None, data: CheckoutRequest) -> Order:
+    async def create_from_cart(self, user: Customer | None, data: CheckoutRequest) -> Order:
         """Convert cart to order. Validates stock, snapshots data, clears cart."""
         if not user and not data.email:
             raise ValueError("Email is required for guest checkout")
@@ -108,7 +108,7 @@ class OrderService:
 
         # Determine customer info
         email = data.email or (user.email if user else None)
-        name = data.full_name or (user.full_name if user else None)
+        name = data.full_name or (user.name if user else None)
         phone = data.phone or (user.phone if user else None)
 
         total = round(subtotal + data.shipping_cost_zar, 2)

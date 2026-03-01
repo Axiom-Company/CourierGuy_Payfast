@@ -12,7 +12,7 @@ class Order(UUIDMixin, TimestampMixin, Base):
     order_number: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
 
     # Customer (nullable = guest checkout supported)
-    customer_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id"), nullable=True, index=True)
 
     # Guest info
     guest_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -55,7 +55,7 @@ class Order(UUIDMixin, TimestampMixin, Base):
     seller_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    customer: Mapped["User | None"] = relationship(back_populates="orders", lazy="selectin")
+    customer: Mapped["Customer | None"] = relationship(back_populates="orders", lazy="selectin")
     items: Mapped[list["OrderItem"]] = relationship(
         back_populates="order", lazy="selectin", cascade="all, delete-orphan"
     )

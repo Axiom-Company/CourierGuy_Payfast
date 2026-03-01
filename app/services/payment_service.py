@@ -25,7 +25,7 @@ class PaymentService:
 
         payment_data = self.payfast.generate_payment_data(
             order_number=order.order_number, total_zar=order.total_zar,
-            item_name=f"Pokemon Cards SA -- {item_count} item(s)", email=email,
+            item_name=f"Elite TCG -- {item_count} item(s)", email=email,
             name_first=parts[0] if parts else "", name_last=parts[1] if len(parts) > 1 else "",
         )
         return {"payment_url": self.payfast.process_url, "payment_data": payment_data}

@@ -47,9 +47,3 @@ class PaymentStatus(str, Enum):
 class ShippingMethod(str, Enum):
     COLLECTION = "collection"
     COURIER_GUY = "courier_guy"
-
-
-class UserRole(str, Enum):
-    CUSTOMER = "customer"
-    SELLER = "seller"
-    ADMIN = "admin"

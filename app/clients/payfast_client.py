@@ -74,6 +74,42 @@ class PayFastClient:
             param_str += f"&passphrase={urllib.parse.quote_plus(self.passphrase)}"
         return hashlib.md5(param_str.encode()).hexdigest() == received
 
+    def generate_marketplace_payment_data(
+        self, order_id: str, order_number: str, total_zar: float, item_name: str,
+        email: str, name_first: str = "", name_last: str = "",
+        notify_url: str = "", return_url: str = "", cancel_url: str = "",
+        custom_str1: str = "", custom_str2: str = "",
+        custom_str3: str = "", custom_str4: str = "",
+        custom_int1: int | None = None,
+    ) -> dict:
+        """Build signed payment data for marketplace transactions.
+
+        Uses order_id (UUID) as m_payment_id and supports custom fields
+        for order_number, listing_id, seller info, etc.
+        """
+        data = {
+            "merchant_id": self.merchant_id,
+            "merchant_key": self.merchant_key,
+            "return_url": return_url or f"{self.return_url}?order={order_number}",
+            "cancel_url": cancel_url or self.cancel_url,
+            "notify_url": notify_url or self.notify_url,
+            "name_first": name_first,
+            "name_last": name_last,
+            "email_address": email,
+            "m_payment_id": order_id,
+            "amount": f"{total_zar:.2f}",
+            "item_name": item_name[:100],
+            "custom_str1": custom_str1,
+            "custom_str2": custom_str2,
+            "custom_str3": custom_str3,
+            "custom_str4": custom_str4,
+        }
+        if custom_int1 is not None:
+            data["custom_int1"] = str(custom_int1)
+        data = {k: v for k, v in data.items() if v}
+        data["signature"] = self._sign(data)
+        return data
+
     async def validate_itn_server(self, posted: dict) -> bool:
         """Server-to-server validation -- confirm ITN is legit."""
         param_str = "&".join(f"{k}={urllib.parse.quote_plus(str(v))}" for k, v in posted.items())
