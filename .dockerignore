@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+.dockerignore
+__pycache__
+*.pyc
+.vscode/
+.idea/
+scripts/
+alembic/
+claude.md
+render.yaml

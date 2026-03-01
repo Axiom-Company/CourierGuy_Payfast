@@ -7,11 +7,6 @@ class Settings(BaseSettings):
     database_url: str
     database_url_sync: str = ""
 
-    # Auth (kept for seller order management)
-    jwt_secret_key: str
-    jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 1440
-
     # PayFast
     payfast_merchant_id: str
     payfast_merchant_key: str
@@ -27,7 +22,7 @@ class Settings(BaseSettings):
     courier_guy_webhook_secret: str = ""
 
     # App
-    frontend_url: str = "http://localhost:5173"
+    frontend_url: str = "https://www.elitetcg.co.za"
     app_env: str = "development"
     admin_api_key: str = ""
 

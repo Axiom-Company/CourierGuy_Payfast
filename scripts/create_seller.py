@@ -1,6 +1,9 @@
 """
 Create seller accounts for Brandon and Ruben.
 Run: python -m scripts.create_seller
+
+Required env vars:
+  SELLER_DEFAULT_PASSWORD – password to assign to new seller accounts
 """
 import asyncio
 import sys
@@ -14,23 +17,29 @@ from app.domain.enums import UserRole
 from app.utils.security import hash_password
 
 
+def _get_password() -> str:
+    pw = os.environ.get("SELLER_DEFAULT_PASSWORD")
+    if not pw:
+        raise SystemExit("Set SELLER_DEFAULT_PASSWORD env var before running this script.")
+    return pw
+
+
 SELLERS = [
     {
         "email": "brandon@pokemoncardssa.co.za",
         "full_name": "Brandon",
         "phone": "0821234567",
-        "password": "seller123!",
     },
     {
         "email": "ruben@pokemoncardssa.co.za",
         "full_name": "Ruben",
         "phone": "0829876543",
-        "password": "seller123!",
     },
 ]
 
 
 async def create_sellers():
+    password = _get_password()
     async with AsyncSessionLocal() as session:
         for seller_data in SELLERS:
             from sqlalchemy import select
@@ -44,7 +53,7 @@ async def create_sellers():
 
             user = User(
                 email=seller_data["email"],
-                password_hash=hash_password(seller_data["password"]),
+                password_hash=hash_password(password),
                 full_name=seller_data["full_name"],
                 phone=seller_data["phone"],
                 role=UserRole.SELLER,
