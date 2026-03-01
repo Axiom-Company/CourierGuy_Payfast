@@ -45,11 +45,8 @@ async def purchase_promotion(
     if listing.seller_id != user_id:
         # Check if user is the seller via seller_profile
         seller = await repo.get_seller_profile_by_customer_id(user_id)
-        if not seller or listing.seller_id != user_id:
+        if not seller or listing.seller_id != seller.id:
             raise HTTPException(403, "Not authorized to promote this listing")
-
-    if listing.status != "active":
-        raise HTTPException(400, "Only active listings can be promoted")
 
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(days=tier["days"])
