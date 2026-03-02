@@ -14,7 +14,8 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_current_user_id, require_admin_api_key
+from app.api.deps import get_current_user_id, require_admin
+from app.domain.models.user import Profile
 from app.repositories.verification_repo import VerificationRepository
 from app.database import get_db
 from app.domain.schemas.verification import (
@@ -118,11 +119,10 @@ async def get_verification_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Get the current seller verification status for the logged-in user."""
-    from app.domain.models.user import Customer
     from sqlalchemy import select
 
     # Check if already a seller
-    cust_result = await db.execute(select(Customer).where(Customer.id == user_id))
+    cust_result = await db.execute(select(Profile).where(Profile.id == user_id))
     customer = cust_result.scalar_one_or_none()
     is_seller = bool(customer and customer.is_seller)
 
@@ -154,7 +154,7 @@ async def admin_list_verifications(
     status: str | None = Query(None, description="Filter by status: pending, under_review, approved, rejected"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    _=Depends(require_admin_api_key),
+    admin: Profile = Depends(require_admin),
     repo: VerificationRepository = Depends(_get_repo),
 ):
     """List all seller verification submissions (admin only)."""
@@ -180,7 +180,7 @@ async def admin_list_verifications(
 @router.get("/admin/{verification_id}", response_model=AdminVerificationDetail)
 async def admin_get_verification(
     verification_id: str,
-    _=Depends(require_admin_api_key),
+    admin: Profile = Depends(require_admin),
     repo: VerificationRepository = Depends(_get_repo),
 ):
     """View full verification detail including images and OCR text (admin only)."""
@@ -215,12 +215,12 @@ async def admin_get_verification(
 async def admin_decide_verification(
     verification_id: str,
     body: AdminVerificationDecision,
-    _=Depends(require_admin_api_key),
+    admin: Profile = Depends(require_admin),
     repo: VerificationRepository = Depends(_get_repo),
 ):
     """Approve or reject a seller verification (admin only).
 
-    On approval, the customer's is_seller flag is set to True.
+    On approval, the profile's role is set to 'verified_seller'.
     On rejection, the customer can resubmit with new documents.
     """
     v = await repo.get_by_id(verification_id)
@@ -273,7 +273,7 @@ async def admin_decide_verification(
 
 @router.get("/admin/stats")
 async def admin_verification_stats(
-    _=Depends(require_admin_api_key),
+    admin: Profile = Depends(require_admin),
     repo: VerificationRepository = Depends(_get_repo),
 ):
     """Get verification statistics for the admin dashboard."""

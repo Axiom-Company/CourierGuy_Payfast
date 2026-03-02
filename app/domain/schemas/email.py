@@ -102,3 +102,53 @@ class NotificationPreferenceResponse(BaseModel):
     marketing_emails: bool
     restock_alerts: bool
     new_drops: bool
+
+
+# ── Admin email log / webhook response models ────────────────────────────────
+
+class EmailLogItem(BaseModel):
+    id: str
+    user_email: str
+    email_type: str
+    subject: str
+    status: str
+    error_message: str | None = None
+    sent_at: str
+
+
+class EmailLogsResponse(BaseModel):
+    logs: list[EmailLogItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class WebhookEventItem(BaseModel):
+    id: str
+    event_type: str
+    recipient_email: str
+    subject: str | None = None
+    email_reference: str | None = None
+    bounce_type: str | None = None
+    bounce_reason: str | None = None
+    received_at: str
+
+
+class WebhookEventsResponse(BaseModel):
+    events: list[WebhookEventItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class EmailStatsResponse(BaseModel):
+    total_sent: int
+    total_failed: int
+    total_bounces: int
+    total_soft_bounces: int
+    total_hard_bounces: int
+    total_opens: int
+    total_clicks: int
+    bounce_rate: float
+    open_rate: float
+    click_rate: float

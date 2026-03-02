@@ -1,4 +1,4 @@
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends
 from app.config import get_settings
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
@@ -6,7 +6,7 @@ from app.database import get_db
 from app.clients.payfast_client import PayFastClient
 from app.clients.courier_guy_client import CourierGuyClient
 
-from app.repositories.user_repo import CustomerRepository
+from app.repositories.user_repo import ProfileRepository
 from app.repositories.product_repo import ProductRepository
 from app.repositories.order_repo import OrderRepository
 from app.repositories.cart_repo import CartRepository
@@ -23,17 +23,11 @@ from app.services.email_service import EmailService
 # Re-export auth dependencies for convenience
 from app.api.auth import (  # noqa: F401
     get_current_user_id,
-    get_current_customer,
+    get_current_profile,
     require_seller,
+    require_admin,
     optional_current_user_id,
 )
-
-
-async def require_admin_api_key(x_admin_api_key: str = Header(...)):
-    """Legacy admin API key check — kept for server-to-server / webhook calls."""
-    settings = get_settings()
-    if not settings.admin_api_key or x_admin_api_key != settings.admin_api_key:
-        raise HTTPException(403, "Invalid admin API key")
 
 
 # ── Service Factories ──

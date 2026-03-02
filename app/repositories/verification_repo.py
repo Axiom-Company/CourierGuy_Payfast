@@ -7,7 +7,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.marketplace import SellerVerification
-from app.domain.models.user import Customer
+from app.domain.models.user import Profile
 
 logger = logging.getLogger(__name__)
 
@@ -67,24 +67,21 @@ class VerificationRepository:
         return result.scalar() or 0
 
     async def mark_customer_as_seller(self, customer_id: str) -> None:
-        """Set is_seller=True and seller_verified_at on the customer."""
+        """Set role='verified_seller' on the profile."""
         stmt = (
-            update(Customer)
-            .where(Customer.id == customer_id)
-            .values(
-                is_seller=True,
-                seller_verified_at=datetime.now(timezone.utc),
-            )
+            update(Profile)
+            .where(Profile.id == customer_id)
+            .values(role="verified_seller")
         )
         await self.db.execute(stmt)
         await self.db.flush()
 
     async def revoke_seller(self, customer_id: str) -> None:
-        """Set is_seller=False on the customer (after rejection)."""
+        """Set role='user' on the profile (after rejection)."""
         stmt = (
-            update(Customer)
-            .where(Customer.id == customer_id)
-            .values(is_seller=False, seller_verified_at=None)
+            update(Profile)
+            .where(Profile.id == customer_id)
+            .values(role="user")
         )
         await self.db.execute(stmt)
         await self.db.flush()

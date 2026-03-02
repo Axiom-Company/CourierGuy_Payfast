@@ -31,7 +31,7 @@ from app.payments.schemas import make_payflex_error
 from app.repositories.order_repo import OrderRepository
 from app.repositories.product_repo import ProductRepository
 from app.domain.enums import PaymentStatus, OrderStatus
-from app.api.deps import get_order_service, require_admin_api_key
+from app.api.deps import get_order_service, require_admin
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db

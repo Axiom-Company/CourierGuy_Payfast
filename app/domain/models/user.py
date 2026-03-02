@@ -5,9 +5,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.domain.models.base import Base
 
 
-class Customer(Base):
-    """Maps to public.customers table (synced from Supabase auth.users via trigger)."""
-    __tablename__ = "customers"
+class Profile(Base):
+    """Maps to public.profiles table (synced from Supabase auth.users via trigger)."""
+    __tablename__ = "profiles"
 
     # PK matches auth.users.id (UUID as text)
     id: Mapped[str] = mapped_column(primary_key=True)
@@ -31,8 +31,7 @@ class Customer(Base):
     accepts_marketing: Mapped[bool | None] = mapped_column(Boolean, default=False)
     email_verified: Mapped[bool | None] = mapped_column(Boolean, default=False)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    is_seller: Mapped[bool | None] = mapped_column(Boolean, default=False)
-    seller_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default="user", nullable=False)
     is_active: Mapped[bool | None] = mapped_column(Boolean, default=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -45,3 +44,15 @@ class Customer(Base):
     # Relationships
     orders: Mapped[list["Order"]] = relationship(back_populates="customer", lazy="selectin")
     cart_items: Mapped[list["CartItem"]] = relationship(back_populates="user", lazy="selectin")
+
+    @property
+    def is_seller(self) -> bool:
+        return self.role in ("seller", "verified_seller", "admin")
+
+    @property
+    def is_verified_seller(self) -> bool:
+        return self.role in ("verified_seller", "admin")
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == "admin"

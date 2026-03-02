@@ -10,7 +10,7 @@ class NotificationPreference(UUIDMixin, Base):
     __tablename__ = "notification_preferences"
 
     user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("customers.id", ondelete="CASCADE"),
+        String, ForeignKey("profiles.id", ondelete="CASCADE"),
         nullable=False, unique=True, index=True,
     )
     order_updates: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

@@ -5,7 +5,7 @@ import jwt
 
 from app.config import get_settings
 from app.database import get_db
-from app.domain.models.user import Customer
+from app.domain.models.user import Profile
 
 
 async def get_current_user_id(
@@ -34,25 +34,34 @@ async def get_current_user_id(
     return user_id
 
 
-async def get_current_customer(
+async def get_current_profile(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> Customer:
-    """Load the full Customer row for the authenticated user."""
-    result = await db.execute(select(Customer).where(Customer.id == user_id))
-    customer = result.scalar_one_or_none()
-    if not customer:
-        raise HTTPException(404, "Customer not found")
-    return customer
+) -> Profile:
+    """Load the full Profile row for the authenticated user."""
+    result = await db.execute(select(Profile).where(Profile.id == user_id))
+    profile = result.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(404, "Profile not found")
+    return profile
 
 
 async def require_seller(
-    customer: Customer = Depends(get_current_customer),
-) -> Customer:
-    """Require the authenticated user to be a verified seller."""
-    if not customer.is_seller:
+    profile: Profile = Depends(get_current_profile),
+) -> Profile:
+    """Require the authenticated user to be a seller."""
+    if not profile.is_seller:
         raise HTTPException(403, "Seller access required")
-    return customer
+    return profile
+
+
+async def require_admin(
+    profile: Profile = Depends(get_current_profile),
+) -> Profile:
+    """Require the authenticated user to be an admin."""
+    if not profile.is_admin:
+        raise HTTPException(403, "Admin access required")
+    return profile
 
 
 async def optional_current_user_id(

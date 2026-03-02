@@ -60,3 +60,10 @@ class IDType(str, Enum):
     SA_ID = "sa_id"
     PASSPORT = "passport"
     DRIVERS_LICENSE = "drivers_license"
+
+
+class UserRole(str, Enum):
+    USER = "user"
+    SELLER = "seller"
+    VERIFIED_SELLER = "verified_seller"
+    ADMIN = "admin"
