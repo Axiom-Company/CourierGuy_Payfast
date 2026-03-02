@@ -47,3 +47,23 @@ class PaymentStatus(str, Enum):
 class ShippingMethod(str, Enum):
     COLLECTION = "collection"
     COURIER_GUY = "courier_guy"
+
+
+class VerificationStatus(str, Enum):
+    PENDING = "pending"
+    UNDER_REVIEW = "under_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class IDType(str, Enum):
+    SA_ID = "sa_id"
+    PASSPORT = "passport"
+    DRIVERS_LICENSE = "drivers_license"
+
+
+class UserRole(str, Enum):
+    USER = "user"
+    SELLER = "seller"
+    VERIFIED_SELLER = "verified_seller"
+    ADMIN = "admin"

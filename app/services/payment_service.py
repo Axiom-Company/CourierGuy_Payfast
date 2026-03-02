@@ -1,8 +1,11 @@
 import logging
+from datetime import datetime
+
 from app.clients.payfast_client import PayFastClient
 from app.repositories.order_repo import OrderRepository
 from app.repositories.product_repo import ProductRepository
 from app.services.shipping_service import ShippingService
+from app.services.email_service import EmailService
 from app.services.telegram_service import TelegramService
 from app.domain.enums import OrderStatus, PaymentStatus, ShippingMethod
 from fastapi import BackgroundTasks
@@ -13,11 +16,12 @@ logger = logging.getLogger(__name__)
 class PaymentService:
     def __init__(self, payfast_client: PayFastClient, order_repo: OrderRepository,
                  product_repo: ProductRepository, shipping_service: ShippingService,
-                 telegram: TelegramService | None = None):
+                 email_service: EmailService, telegram: TelegramService | None = None):
         self.payfast = payfast_client
         self.order_repo = order_repo
         self.product_repo = product_repo
         self.shipping_service = shipping_service
+        self.email_service = email_service
         self.telegram = telegram or TelegramService()
 
     def generate_checkout(self, order) -> dict:
@@ -69,6 +73,9 @@ class PaymentService:
             if order.shipping_method == ShippingMethod.COURIER_GUY:
                 background_tasks.add_task(self._auto_book_shipping, order.id)
 
+            # Background: send order confirmation email
+            background_tasks.add_task(self._send_order_confirmation_email, order)
+
             # Telegram notification (best effort)
             email = order.guest_email or (order.customer.email if order.customer else "")
             background_tasks.add_task(
@@ -85,6 +92,16 @@ class PaymentService:
             })
             return True
 
+        elif status == "FAILED":
+            await self.order_repo.update_by_id(order.id, {
+                "payment_status": PaymentStatus.FAILED,
+            })
+
+            # Background: send payment failed email
+            background_tasks.add_task(self._send_payment_failed_email, order)
+
+            return True
+
         return False
 
     async def _reduce_stock(self, order) -> None:
@@ -96,3 +113,54 @@ class PaymentService:
             await self.shipping_service.book_shipment(order_id)
         except Exception as e:
             logger.warning(f"Auto-ship failed for {order_id}: {e}")
+
+    async def _send_order_confirmation_email(self, order) -> None:
+        try:
+            to_email = order.guest_email or (order.customer.email if order.customer else "")
+            to_name = order.guest_name or (order.customer.name if order.customer else "Customer")
+            if not to_email:
+                return
+
+            order_items = [
+                {
+                    "name": item.product_name,
+                    "quantity": item.quantity,
+                    "unit_price": item.unit_price_zar,
+                    "line_total": item.line_total_zar,
+                }
+                for item in order.items
+            ]
+
+            shipping_address = ", ".join(filter(None, [
+                order.shipping_address_line1,
+                order.shipping_address_line2,
+                order.shipping_city,
+                order.shipping_province,
+                order.shipping_postal_code,
+            ]))
+
+            await self.email_service.send_order_confirmation(
+                to_email=to_email,
+                to_name=to_name,
+                order_number=order.order_number,
+                order_items=order_items,
+                subtotal=order.subtotal_zar,
+                shipping_cost=order.shipping_cost_zar,
+                total=order.total_zar,
+                shipping_address=shipping_address or "Collection",
+                order_date=datetime.now().strftime("%d %B %Y"),
+            )
+        except Exception as e:
+            logger.error(f"[EMAIL] Failed to send order confirmation for {order.order_number}: {e}")
+
+    async def _send_payment_failed_email(self, order) -> None:
+        try:
+            to_email = order.guest_email or (order.customer.email if order.customer else "")
+            to_name = order.guest_name or (order.customer.name if order.customer else "Customer")
+            if not to_email:
+                return
+
+            retry_url = f"https://www.elitetcg.co.za/cart"
+            await self.email_service.send_payment_failed(to_email, to_name, order.order_number, retry_url)
+        except Exception as e:
+            logger.error(f"[EMAIL] Failed to send payment_failed for {order.order_number}: {e}")

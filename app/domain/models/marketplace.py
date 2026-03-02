@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from sqlalchemy import String, Float, Integer, Text, DateTime, func
+from sqlalchemy import String, Float, Integer, Text, DateTime, Boolean, func
 from sqlalchemy.orm import Mapped, mapped_column
 from app.domain.models.base import Base, UUIDMixin, TimestampMixin
 
@@ -84,3 +84,35 @@ class ListingPromotion(UUIDMixin, TimestampMixin, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     payment_status: Mapped[str] = mapped_column(String(30), default="pending", nullable=False)
     payfast_payment_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class SellerVerification(UUIDMixin, TimestampMixin, Base):
+    """Tracks seller ID verification submissions and their review status."""
+    __tablename__ = "seller_verifications"
+
+    customer_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="pending", nullable=False, index=True)
+
+    # ID document info
+    id_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    id_front_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    id_back_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    selfie_image: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Extracted / verified data
+    id_number_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    full_name_on_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ocr_text_front: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ocr_text_back: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Face verification results
+    face_match_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    face_match_passed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    faces_detected_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    faces_detected_selfie: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Admin review
+    reviewed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    admin_notes: Mapped[str | None] = mapped_column(Text, nullable=True)

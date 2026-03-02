@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from app.domain.schemas.shipping import ShippingQuoteRequest, ShippingQuoteResponse, ShipmentBookRequest, ShipmentBookResponse
 from app.services.shipping_service import ShippingService
-from app.api.deps import get_shipping_service, require_admin_api_key
+from app.api.deps import get_shipping_service, require_admin
+from app.domain.models.user import Profile
 
 router = APIRouter(prefix="/shipping", tags=["Shipping"])
 
@@ -16,7 +17,7 @@ async def quote(data: ShippingQuoteRequest, service: ShippingService = Depends(g
 
 
 @router.post("/book", response_model=ShipmentBookResponse)
-async def book(data: ShipmentBookRequest, _=Depends(require_admin_api_key),
+async def book(data: ShipmentBookRequest, admin: Profile = Depends(require_admin),
                service: ShippingService = Depends(get_shipping_service)):
     try:
         return await service.book_shipment(data.order_id)

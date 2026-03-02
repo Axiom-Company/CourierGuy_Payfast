@@ -32,7 +32,7 @@ from app.repositories.order_repo import OrderRepository
 from app.repositories.product_repo import ProductRepository
 from app.services.telegram_service import TelegramService
 from app.domain.enums import PaymentStatus, OrderStatus
-from app.api.deps import get_order_service, get_telegram_service, require_admin_api_key
+from app.api.deps import get_order_service, get_telegram_service, require_admin
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
@@ -419,7 +419,7 @@ async def payflex_return(
 # POST /refund/{order_number}
 # ---------------------------------------------------------------------------
 
-@router.post("/refund/{order_number}", dependencies=[Depends(require_admin_api_key)])
+@router.post("/refund/{order_number}", dependencies=[Depends(require_admin)])
 async def refund_order(
     order_number: str,
     data: PayflexRefundRequest,
