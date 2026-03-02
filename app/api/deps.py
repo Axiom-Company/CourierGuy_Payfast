@@ -42,14 +42,31 @@ def get_pricing_service() -> PricingService:
     return PricingService()
 
 
-def get_shipping_service(db: AsyncSession = Depends(get_db),
-                         pricing: PricingService = Depends(get_pricing_service)) -> ShippingService:
-    return ShippingService(CourierGuyClient(), OrderRepository(db), pricing)
+def get_email_service(db: AsyncSession = Depends(get_db)) -> EmailService:
+    settings = get_settings()
+    return EmailService(
+        api_key=settings.zeptomail_api_key,
+        from_email=settings.zeptomail_from_email,
+        from_name=settings.zeptomail_from_name,
+        bounce_email=settings.zeptomail_bounce_email,
+        db=db,
+    )
 
 
-def get_payment_service(db: AsyncSession = Depends(get_db),
-                        shipping: ShippingService = Depends(get_shipping_service)) -> PaymentService:
-    return PaymentService(PayFastClient(), OrderRepository(db), ProductRepository(db), shipping)
+def get_shipping_service(
+    db: AsyncSession = Depends(get_db),
+    pricing: PricingService = Depends(get_pricing_service),
+    email: EmailService = Depends(get_email_service),
+) -> ShippingService:
+    return ShippingService(CourierGuyClient(), OrderRepository(db), pricing, email)
+
+
+def get_payment_service(
+    db: AsyncSession = Depends(get_db),
+    shipping: ShippingService = Depends(get_shipping_service),
+    email: EmailService = Depends(get_email_service),
+) -> PaymentService:
+    return PaymentService(PayFastClient(), OrderRepository(db), ProductRepository(db), shipping, email)
 
 
 def get_order_service(db: AsyncSession = Depends(get_db)) -> OrderService:
@@ -64,11 +81,6 @@ def get_marketplace_repo(db: AsyncSession = Depends(get_db)) -> MarketplaceRepos
     return MarketplaceRepository(db)
 
 
-def get_email_service() -> EmailService:
-    settings = get_settings()
-    return EmailService(settings.zeptomail_api_key, settings.zeptomail_from_email, settings.zeptomail_from_name)
-
-
 def get_marketplace_payment_service(
     db: AsyncSession = Depends(get_db),
 ) -> MarketplacePaymentService:
@@ -76,5 +88,11 @@ def get_marketplace_payment_service(
     return MarketplacePaymentService(
         PayFastClient(),
         MarketplaceRepository(db),
-        EmailService(settings.zeptomail_api_key, settings.zeptomail_from_email, settings.zeptomail_from_name),
+        EmailService(
+            api_key=settings.zeptomail_api_key,
+            from_email=settings.zeptomail_from_email,
+            from_name=settings.zeptomail_from_name,
+            bounce_email=settings.zeptomail_bounce_email,
+            db=db,
+        ),
     )

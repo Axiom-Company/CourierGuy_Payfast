@@ -33,6 +33,96 @@ async def _reservation_cleanup_loop():
             logger.warning(f"Reservation cleanup error: {e}")
 
 
+async def _abandoned_cart_email_loop():
+    """Send abandoned cart emails for carts idle 2+ hours. Runs every 30 minutes."""
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import select, update
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.orm import selectinload
+    from app.database import engine as async_engine
+    from app.domain.models.cart import CartItem
+    from app.domain.models.user import Customer
+    from app.services.email_service import EmailService
+
+    settings = get_settings()
+
+    while True:
+        try:
+            await asyncio.sleep(1800)  # 30 minutes
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
+
+            async with AsyncSession(async_engine) as session:
+                # Find users with cart items older than 2 hours that haven't been emailed
+                result = await session.execute(
+                    select(CartItem)
+                    .options(selectinload(CartItem.product), selectinload(CartItem.user))
+                    .where(
+                        CartItem.updated_at < cutoff,
+                        CartItem.abandoned_email_sent == False,
+                    )
+                )
+                stale_items = list(result.scalars().all())
+
+                if not stale_items:
+                    continue
+
+                # Group by user
+                user_carts: dict[str, list] = {}
+                for item in stale_items:
+                    user_carts.setdefault(item.user_id, []).append(item)
+
+                email_service = EmailService(
+                    api_key=settings.zeptomail_api_key,
+                    from_email=settings.zeptomail_from_email,
+                    from_name=settings.zeptomail_from_name,
+                    bounce_email=settings.zeptomail_bounce_email,
+                    db=session,
+                )
+
+                for user_id, items in user_carts.items():
+                    user = items[0].user
+                    if not user or not user.email:
+                        continue
+
+                    cart_data = []
+                    for ci in items:
+                        if ci.product:
+                            cart_data.append({
+                                "name": ci.product.name,
+                                "quantity": ci.quantity,
+                                "price": ci.product.sell_price_zar,
+                            })
+
+                    if not cart_data:
+                        continue
+
+                    await email_service.send_abandoned_cart(
+                        to_email=user.email,
+                        to_name=user.name or user.first_name or "there",
+                        cart_items=cart_data,
+                        cart_url="https://www.elitetcg.co.za/cart",
+                        user_id=user_id,
+                    )
+
+                    # Flag items so we don't re-send
+                    item_ids = [ci.id for ci in items]
+                    await session.execute(
+                        update(CartItem)
+                        .where(CartItem.id.in_(item_ids))
+                        .values(abandoned_email_sent=True)
+                    )
+
+                await session.commit()
+                sent_count = len(user_carts)
+                if sent_count:
+                    logger.info(f"[ABANDONED CART] Sent {sent_count} abandoned cart email(s)")
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.warning(f"Abandoned cart email error: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -63,11 +153,25 @@ async def lifespan(app: FastAPI):
     cleanup_task = asyncio.create_task(_reservation_cleanup_loop())
     print("Marketplace: reservation cleanup started (every 5 min)")
 
+    # Start abandoned cart email loop
+    abandoned_cart_task = asyncio.create_task(_abandoned_cart_email_loop())
+    print("Email: abandoned cart reminder started (every 30 min)")
+
+    if settings.zeptomail_api_key:
+        print(f"Email: ZeptoMail enabled (from={settings.zeptomail_from_email})")
+    else:
+        print("Email: ZeptoMail DISABLED (no API key)")
+
     yield
 
     cleanup_task.cancel()
+    abandoned_cart_task.cancel()
     try:
         await cleanup_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await abandoned_cart_task
     except asyncio.CancelledError:
         pass
     print("Shutting down...")

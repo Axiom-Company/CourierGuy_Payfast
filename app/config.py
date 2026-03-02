@@ -43,8 +43,9 @@ class Settings(BaseSettings):
 
     # ZeptoMail (transactional emails)
     zeptomail_api_key: str = ""
-    zeptomail_from_email: str = "admin@elitetcg.co.za"
+    zeptomail_from_email: str = "orders@elitetcg.co.za"
     zeptomail_from_name: str = "Elite TCG"
+    zeptomail_bounce_email: str = "bounce@bounce.elitetcg.co.za"
 
     # Pokemon TCG API
     pokemon_tcg_api_key: str = ""

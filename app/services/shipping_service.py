@@ -1,14 +1,21 @@
+import logging
+
 from app.clients.courier_guy_client import CourierGuyClient
 from app.repositories.order_repo import OrderRepository
 from app.services.pricing_service import PricingService
+from app.services.email_service import EmailService
 from app.domain.enums import OrderStatus
+
+logger = logging.getLogger(__name__)
 
 
 class ShippingService:
-    def __init__(self, courier_client: CourierGuyClient, order_repo: OrderRepository, pricing_service: PricingService):
+    def __init__(self, courier_client: CourierGuyClient, order_repo: OrderRepository,
+                 pricing_service: PricingService, email_service: EmailService | None = None):
         self.courier_client = courier_client
         self.order_repo = order_repo
         self.pricing_service = pricing_service
+        self.email_service = email_service
 
     async def get_quote(self, address: str, city: str, province: str, postal_code: str, total_weight_grams: int) -> dict:
         weight_kg = max(total_weight_grams / 1000, 0.5)
@@ -49,6 +56,22 @@ class ShippingService:
             "courier_booking_reference": result["booking_reference"],
             "order_status": OrderStatus.SHIPPED,
         })
+
+        # Send shipping notification email
+        if self.email_service and customer_email:
+            try:
+                tracking_url = f"https://www.thecourierguy.co.za/tracking?waybill={result['tracking_number']}"
+                await self.email_service.send_shipping_notification(
+                    to_email=customer_email,
+                    to_name=customer_name,
+                    order_number=order.order_number,
+                    tracking_number=result["tracking_number"],
+                    courier="The Courier Guy",
+                    tracking_url=tracking_url,
+                )
+            except Exception as e:
+                logger.error(f"[EMAIL] Failed to send shipping notification for {order.order_number}: {e}")
+
         return result
 
     async def handle_webhook(self, tracking_number: str, status: str) -> None:
@@ -64,3 +87,13 @@ class ShippingService:
         order = await self.order_repo.get_by_tracking_number(tracking_number)
         if order:
             await self.order_repo.update_by_id(order.id, {"order_status": new_status})
+
+            # Send delivery confirmation email when delivered
+            if new_status == OrderStatus.DELIVERED and self.email_service:
+                try:
+                    to_email = order.guest_email or (order.customer.email if order.customer else "")
+                    to_name = order.guest_name or (order.customer.name if order.customer else "Customer")
+                    if to_email:
+                        await self.email_service.send_delivery_confirmation(to_email, to_name, order.order_number)
+                except Exception as e:
+                    logger.error(f"[EMAIL] Failed to send delivery confirmation for {order.order_number}: {e}")
