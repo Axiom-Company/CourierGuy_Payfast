@@ -54,8 +54,10 @@ async def lifespan(app: FastAPI):
 
     if settings.google_cloud_vision_api_key:
         print("Card Scanner: enabled (Google Cloud Vision)")
+        print("Seller Verification: enabled (face detection + ID OCR)")
     else:
         print("Card Scanner: DISABLED (no Vision API key)")
+        print("Seller Verification: DISABLED (requires Vision API key)")
 
     # Start background reservation cleanup
     cleanup_task = asyncio.create_task(_reservation_cleanup_loop())

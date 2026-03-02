@@ -10,6 +10,7 @@ from app.domain.models.marketplace import (
     MarketplaceOrder,
     SellerPayout,
     ListingPromotion,
+    SellerVerification,
 )
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "MarketplaceOrder",
     "SellerPayout",
     "ListingPromotion",
+    "SellerVerification",
 ]
