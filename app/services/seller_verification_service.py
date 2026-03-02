@@ -173,8 +173,8 @@ def parse_passport_text(text: str) -> dict:
     if passport_match:
         passport_number = passport_match.group(1)
 
-    # Try MRZ (machine readable zone) — two lines of 44 chars
-    mrz_match = re.search(r"(P[<A-Z]{1}[A-Z]{3}[A-Z<]{39})\n([A-Z0-9<]{44})", text.upper())
+    # Try MRZ (machine readable zone) — two lines starting with P<
+    mrz_match = re.search(r"(P[<A-Z][A-Z]{3}[A-Z<]{30,39})\n([A-Z0-9<]{30,44})", text.upper())
     if mrz_match:
         mrz_line1 = mrz_match.group(1)
         # Extract name from MRZ line 1
