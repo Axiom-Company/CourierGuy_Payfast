@@ -1,14 +1,17 @@
 from app.clients.courier_guy_client import CourierGuyClient
 from app.repositories.order_repo import OrderRepository
 from app.services.pricing_service import PricingService
+from app.services.telegram_service import TelegramService
 from app.domain.enums import OrderStatus
 
 
 class ShippingService:
-    def __init__(self, courier_client: CourierGuyClient, order_repo: OrderRepository, pricing_service: PricingService):
+    def __init__(self, courier_client: CourierGuyClient, order_repo: OrderRepository,
+                 pricing_service: PricingService, telegram: TelegramService | None = None):
         self.courier_client = courier_client
         self.order_repo = order_repo
         self.pricing_service = pricing_service
+        self.telegram = telegram or TelegramService()
 
     async def get_quote(self, address: str, city: str, province: str, postal_code: str, total_weight_grams: int) -> dict:
         weight_kg = max(total_weight_grams / 1000, 0.5)
@@ -49,6 +52,12 @@ class ShippingService:
             "courier_booking_reference": result["booking_reference"],
             "order_status": OrderStatus.SHIPPED,
         })
+
+        try:
+            await self.telegram.notify_shipment_booked(order.order_number, result["tracking_number"])
+        except Exception:
+            pass  # best effort
+
         return result
 
     async def handle_webhook(self, tracking_number: str, status: str) -> None:
@@ -64,3 +73,10 @@ class ShippingService:
         order = await self.order_repo.get_by_tracking_number(tracking_number)
         if order:
             await self.order_repo.update_by_id(order.id, {"order_status": new_status})
+
+            try:
+                await self.telegram.notify_shipping_update(
+                    tracking_number, status, order.order_number,
+                )
+            except Exception:
+                pass  # best effort

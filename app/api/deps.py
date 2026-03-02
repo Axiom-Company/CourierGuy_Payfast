@@ -19,6 +19,7 @@ from app.services.payment_service import PaymentService
 from app.services.dashboard_service import DashboardService
 from app.services.marketplace_payment_service import MarketplacePaymentService
 from app.services.email_service import EmailService
+from app.services.telegram_service import TelegramService
 
 # Re-export auth dependencies for convenience
 from app.api.auth import (  # noqa: F401
@@ -44,12 +45,20 @@ def get_pricing_service() -> PricingService:
 
 def get_shipping_service(db: AsyncSession = Depends(get_db),
                          pricing: PricingService = Depends(get_pricing_service)) -> ShippingService:
-    return ShippingService(CourierGuyClient(), OrderRepository(db), pricing)
+    settings = get_settings()
+    return ShippingService(
+        CourierGuyClient(), OrderRepository(db), pricing,
+        TelegramService(settings.telegram_bot_token, settings.telegram_chat_id),
+    )
 
 
 def get_payment_service(db: AsyncSession = Depends(get_db),
                         shipping: ShippingService = Depends(get_shipping_service)) -> PaymentService:
-    return PaymentService(PayFastClient(), OrderRepository(db), ProductRepository(db), shipping)
+    settings = get_settings()
+    return PaymentService(
+        PayFastClient(), OrderRepository(db), ProductRepository(db), shipping,
+        TelegramService(settings.telegram_bot_token, settings.telegram_chat_id),
+    )
 
 
 def get_order_service(db: AsyncSession = Depends(get_db)) -> OrderService:
@@ -69,6 +78,11 @@ def get_email_service() -> EmailService:
     return EmailService(settings.zeptomail_api_key, settings.zeptomail_from_email, settings.zeptomail_from_name)
 
 
+def get_telegram_service() -> TelegramService:
+    settings = get_settings()
+    return TelegramService(settings.telegram_bot_token, settings.telegram_chat_id)
+
+
 def get_marketplace_payment_service(
     db: AsyncSession = Depends(get_db),
 ) -> MarketplacePaymentService:
@@ -77,4 +91,5 @@ def get_marketplace_payment_service(
         PayFastClient(),
         MarketplaceRepository(db),
         EmailService(settings.zeptomail_api_key, settings.zeptomail_from_email, settings.zeptomail_from_name),
+        TelegramService(settings.telegram_bot_token, settings.telegram_chat_id),
     )

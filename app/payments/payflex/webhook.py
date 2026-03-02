@@ -17,6 +17,7 @@ from decimal import Decimal
 from app.payments.payflex.client import PayflexClient
 from app.payments.payflex.schemas import PayflexWebhookPayload, PayflexOrderStatus
 from app.repositories.order_repo import OrderRepository
+from app.services.telegram_service import TelegramService
 from app.domain.enums import PaymentStatus, OrderStatus
 
 logger = logging.getLogger(__name__)
@@ -37,9 +38,11 @@ class PayflexWebhookHandler:
         self,
         payflex_client: PayflexClient,
         order_repo: OrderRepository,
+        telegram: TelegramService | None = None,
     ):
         self._client = payflex_client
         self._order_repo = order_repo
+        self._telegram = telegram or TelegramService()
 
     async def handle(self, payload: PayflexWebhookPayload) -> dict:
         """
@@ -135,6 +138,16 @@ class PayflexWebhookHandler:
             "Payflex webhook: order %s updated to payment_status=%s, order_status=%s",
             order.order_number, payment_status, order_status,
         )
+
+        # Telegram notification for paid orders (best effort)
+        if payment_status == PaymentStatus.COMPLETE:
+            try:
+                email = order.guest_email or (order.customer.email if order.customer else "")
+                await self._telegram.notify_order_paid(
+                    order.order_number, float(order.total_zar), email,
+                )
+            except Exception:
+                pass  # best effort
 
         return {
             "processed": True,
