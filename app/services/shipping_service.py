@@ -4,6 +4,7 @@ from app.clients.courier_guy_client import CourierGuyClient
 from app.repositories.order_repo import OrderRepository
 from app.services.pricing_service import PricingService
 from app.services.email_service import EmailService
+from app.services.telegram_service import TelegramService
 from app.domain.enums import OrderStatus
 
 logger = logging.getLogger(__name__)
@@ -11,11 +12,13 @@ logger = logging.getLogger(__name__)
 
 class ShippingService:
     def __init__(self, courier_client: CourierGuyClient, order_repo: OrderRepository,
-                 pricing_service: PricingService, email_service: EmailService | None = None):
+                 pricing_service: PricingService, email_service: EmailService | None = None,
+                 telegram: TelegramService | None = None):
         self.courier_client = courier_client
         self.order_repo = order_repo
         self.pricing_service = pricing_service
         self.email_service = email_service
+        self.telegram = telegram or TelegramService()
 
     async def get_quote(self, address: str, city: str, province: str, postal_code: str, total_weight_grams: int) -> dict:
         weight_kg = max(total_weight_grams / 1000, 0.5)
@@ -72,6 +75,12 @@ class ShippingService:
             except Exception as e:
                 logger.error(f"[EMAIL] Failed to send shipping notification for {order.order_number}: {e}")
 
+        # Telegram notification (best effort)
+        try:
+            await self.telegram.notify_shipment_booked(order.order_number, result["tracking_number"])
+        except Exception:
+            pass  # best effort
+
         return result
 
     async def handle_webhook(self, tracking_number: str, status: str) -> None:
@@ -97,3 +106,11 @@ class ShippingService:
                         await self.email_service.send_delivery_confirmation(to_email, to_name, order.order_number)
                 except Exception as e:
                     logger.error(f"[EMAIL] Failed to send delivery confirmation for {order.order_number}: {e}")
+
+            # Telegram notification (best effort)
+            try:
+                await self.telegram.notify_shipping_update(
+                    tracking_number, status, order.order_number,
+                )
+            except Exception:
+                pass  # best effort

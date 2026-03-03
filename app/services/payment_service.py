@@ -6,6 +6,7 @@ from app.repositories.order_repo import OrderRepository
 from app.repositories.product_repo import ProductRepository
 from app.services.shipping_service import ShippingService
 from app.services.email_service import EmailService
+from app.services.telegram_service import TelegramService
 from app.domain.enums import OrderStatus, PaymentStatus, ShippingMethod
 from fastapi import BackgroundTasks
 
@@ -15,12 +16,13 @@ logger = logging.getLogger(__name__)
 class PaymentService:
     def __init__(self, payfast_client: PayFastClient, order_repo: OrderRepository,
                  product_repo: ProductRepository, shipping_service: ShippingService,
-                 email_service: EmailService):
+                 email_service: EmailService, telegram: TelegramService | None = None):
         self.payfast = payfast_client
         self.order_repo = order_repo
         self.product_repo = product_repo
         self.shipping_service = shipping_service
         self.email_service = email_service
+        self.telegram = telegram or TelegramService()
 
     def generate_checkout(self, order) -> dict:
         item_count = sum(item.quantity for item in order.items)
@@ -73,6 +75,13 @@ class PaymentService:
 
             # Background: send order confirmation email
             background_tasks.add_task(self._send_order_confirmation_email, order)
+
+            # Telegram notification (best effort)
+            email = order.guest_email or (order.customer.email if order.customer else "")
+            background_tasks.add_task(
+                self.telegram.notify_order_paid,
+                order.order_number, order.total_zar, email,
+            )
 
             return True
 

@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.repositories.marketplace_repo import MarketplaceRepository
 from app.services.commission_service import calculate_commission
 from app.services.email_service import EmailService
+from app.services.telegram_service import TelegramService
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +19,12 @@ class MarketplacePaymentService:
         payfast: PayFastClient,
         repo: MarketplaceRepository,
         email: EmailService,
+        telegram: TelegramService | None = None,
     ):
         self.payfast = payfast
         self.repo = repo
         self.email = email
+        self.telegram = telegram or TelegramService()
         self.settings = get_settings()
 
     async def create_payment(
@@ -178,6 +181,16 @@ class MarketplacePaymentService:
             except Exception as e:
                 logger.error(f"[MARKETPLACE ITN] Seller email failed: {e}")
 
+            # Telegram notification (best effort)
+            try:
+                await self.telegram.notify_marketplace_sale(
+                    order.order_number, order.listing_title or "",
+                    order.quantity, order.total_amount, order.seller_amount,
+                    order.buyer_email,
+                )
+            except Exception as e:
+                logger.error(f"[MARKETPLACE ITN] Telegram notification failed: {e}")
+
             logger.info(f"[MARKETPLACE ITN] Payment complete: {order_id}")
             return True
 
@@ -233,15 +246,23 @@ class MarketplacePaymentService:
         )
 
         # Notify seller
+        seller_name = "Seller"
         try:
             seller = await self.repo.get_seller_profile_by_customer_id(order.seller_id)
             if seller:
+                seller_name = seller.display_name or "Seller"
                 seller_email = seller.contact_email or seller.payfast_email
                 if seller_email:
                     await self.email.send_delivery_confirmed_to_seller(
-                        seller_email, seller.display_name or "Seller", order.order_number,
+                        seller_email, seller_name, order.order_number,
                     )
         except Exception as e:
             logger.error(f"[MARKETPLACE] Delivery notification failed: {e}")
+
+        # Telegram notification (best effort)
+        try:
+            await self.telegram.notify_marketplace_delivery(order.order_number, seller_name)
+        except Exception as e:
+            logger.error(f"[MARKETPLACE] Telegram delivery notification failed: {e}")
 
         return {"status": "delivered", "order_number": order.order_number}

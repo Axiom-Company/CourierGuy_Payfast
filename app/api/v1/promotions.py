@@ -7,9 +7,10 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from app.config import get_settings
 from app.clients.payfast_client import PayFastClient
 from app.domain.schemas.marketplace import PurchasePromotionRequest
-from app.api.deps import get_marketplace_repo, get_email_service, get_current_user_id
+from app.api.deps import get_marketplace_repo, get_email_service, get_telegram_service, get_current_user_id
 from app.repositories.marketplace_repo import MarketplaceRepository
 from app.services.email_service import EmailService
+from app.services.telegram_service import TelegramService
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,7 @@ async def promotion_itn(
     request: Request,
     repo: MarketplaceRepository = Depends(get_marketplace_repo),
     email_service: EmailService = Depends(get_email_service),
+    telegram: TelegramService = Depends(get_telegram_service),
 ):
     form = await request.form()
     posted = dict(form)
@@ -131,20 +133,32 @@ async def promotion_itn(
         logger.info(f"[PROMO ITN] Completed: {promotion_id} tier={promotion.tier}")
 
         # Send confirmation email
+        listing_title = ""
+        seller_name = "Seller"
         try:
             listing = await repo.get_active_listing(promotion.listing_id)
             if listing:
+                listing_title = listing.title
                 seller = await repo.get_seller_profile_by_customer_id(listing.seller_id)
                 if seller:
+                    seller_name = seller.display_name or "Seller"
                     seller_email = seller.contact_email or seller.payfast_email
                     if seller_email:
                         await email_service.send_promotion_confirmation(
-                            seller_email, seller.display_name or "Seller",
-                            listing.title, promotion.tier,
+                            seller_email, seller_name,
+                            listing_title, promotion.tier,
                             promotion.expires_at.isoformat() if promotion.expires_at else "",
                         )
         except Exception as e:
             logger.error(f"[PROMO ITN] Email failed: {e}")
+
+        # Telegram notification (best effort)
+        try:
+            await telegram.notify_promotion_activated(
+                listing_title, promotion.tier, seller_name, promotion.price_paid,
+            )
+        except Exception as e:
+            logger.error(f"[PROMO ITN] Telegram notification failed: {e}")
 
     elif payment_status == "CANCELLED":
         await repo.update_promotion(promotion_id, payment_status="failed")

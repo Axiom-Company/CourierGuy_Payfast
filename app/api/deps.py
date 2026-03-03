@@ -19,6 +19,7 @@ from app.services.payment_service import PaymentService
 from app.services.dashboard_service import DashboardService
 from app.services.marketplace_payment_service import MarketplacePaymentService
 from app.services.email_service import EmailService
+from app.services.telegram_service import TelegramService
 
 # Re-export auth dependencies for convenience
 from app.api.auth import (  # noqa: F401
@@ -47,12 +48,21 @@ def get_email_service(db: AsyncSession = Depends(get_db)) -> EmailService:
     )
 
 
+def get_telegram_service() -> TelegramService:
+    settings = get_settings()
+    return TelegramService(settings.telegram_bot_token, settings.telegram_chat_id)
+
+
 def get_shipping_service(
     db: AsyncSession = Depends(get_db),
     pricing: PricingService = Depends(get_pricing_service),
     email: EmailService = Depends(get_email_service),
 ) -> ShippingService:
-    return ShippingService(CourierGuyClient(), OrderRepository(db), pricing, email)
+    settings = get_settings()
+    return ShippingService(
+        CourierGuyClient(), OrderRepository(db), pricing, email,
+        TelegramService(settings.telegram_bot_token, settings.telegram_chat_id),
+    )
 
 
 def get_payment_service(
@@ -60,7 +70,11 @@ def get_payment_service(
     shipping: ShippingService = Depends(get_shipping_service),
     email: EmailService = Depends(get_email_service),
 ) -> PaymentService:
-    return PaymentService(PayFastClient(), OrderRepository(db), ProductRepository(db), shipping, email)
+    settings = get_settings()
+    return PaymentService(
+        PayFastClient(), OrderRepository(db), ProductRepository(db), shipping, email,
+        TelegramService(settings.telegram_bot_token, settings.telegram_chat_id),
+    )
 
 
 def get_order_service(db: AsyncSession = Depends(get_db)) -> OrderService:
@@ -73,6 +87,7 @@ def get_dashboard_service(db: AsyncSession = Depends(get_db)) -> DashboardServic
 
 def get_marketplace_repo(db: AsyncSession = Depends(get_db)) -> MarketplaceRepository:
     return MarketplaceRepository(db)
+
 
 
 def get_marketplace_payment_service(
@@ -89,4 +104,5 @@ def get_marketplace_payment_service(
             bounce_email=settings.zeptomail_bounce_email,
             db=db,
         ),
+        TelegramService(settings.telegram_bot_token, settings.telegram_chat_id),
     )

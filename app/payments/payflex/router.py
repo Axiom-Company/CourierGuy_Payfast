@@ -30,8 +30,9 @@ from app.payments.payflex.webhook import PayflexWebhookHandler
 from app.payments.schemas import make_payflex_error
 from app.repositories.order_repo import OrderRepository
 from app.repositories.product_repo import ProductRepository
+from app.services.telegram_service import TelegramService
 from app.domain.enums import PaymentStatus, OrderStatus
-from app.api.deps import get_order_service, require_admin
+from app.api.deps import get_order_service, get_telegram_service, require_admin
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
@@ -291,6 +292,7 @@ async def payflex_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     order_repo: OrderRepository = Depends(_get_order_repo),
+    telegram: TelegramService = Depends(get_telegram_service),
 ):
     """
     Receive Payflex status callback.
@@ -315,7 +317,7 @@ async def payflex_webhook(
         return JSONResponse(status_code=200, content={"received": True, "error": "invalid_payload"})
 
     client = _get_payflex_client()
-    handler = PayflexWebhookHandler(client, order_repo)
+    handler = PayflexWebhookHandler(client, order_repo, telegram)
 
     # Process in the current request (webhook handler is designed to be fast)
     # but reduce stock in the background
@@ -417,7 +419,7 @@ async def payflex_return(
 # POST /refund/{order_number}
 # ---------------------------------------------------------------------------
 
-@router.post("/refund/{order_number}", dependencies=[Depends(require_admin_api_key)])
+@router.post("/refund/{order_number}", dependencies=[Depends(require_admin)])
 async def refund_order(
     order_number: str,
     data: PayflexRefundRequest,

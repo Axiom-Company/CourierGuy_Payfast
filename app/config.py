@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
     supabase_jwt_secret: str = ""
 
+    # Telegram Bot (elitetcgbot)
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
     # Google Cloud Vision (card scanning)
     google_cloud_vision_api_key: str = ""
 
